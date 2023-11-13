@@ -25,13 +25,50 @@ def get_x(x):
 def get_y(y):
     return round((y - Y_OFFSET) * ZOOM)
 
+class IO:
+    def __init__(self, switch, index):
+        self.switch = switch
+        self.index = index
+
 class Switch:
-    def __init__(self, x, y):
+    def __init__(self, x, y, name = ""):
         self.x = x
         self.y = y
         self.active = False
         self.rotation = 1 # 0 = up, 1 = right, 2 = down, 3 = left
-    
+        self.io = [None, None, None]
+        self.name = name
+
+    def get_io_pos(self, index):
+        if self.rotation == 0:
+            if index == 0:
+                return (get_x(self.x) + 10 * ZOOM, get_y(self.y) + 20 * ZOOM)
+            elif index == 1:
+                return (get_x(self.x) + ZOOM * 2, get_y(self.y))
+            elif index == 2:
+                return (get_x(self.x) + 18 * ZOOM, get_y(self.y))
+        elif self.rotation == 1:
+            if index == 0:
+                return (get_x(self.x), get_y(self.y) + 10 * ZOOM)
+            elif index == 1:
+                return (get_x(self.x) + 20 * ZOOM, get_y(self.y) + ZOOM * 2)
+            elif index == 2:
+                return (get_x(self.x) + 20 * ZOOM, get_y(self.y) + 18 * ZOOM)
+        elif self.rotation == 2:
+            if index == 0:
+                return (get_x(self.x) + 10 * ZOOM, get_y(self.y))
+            elif index == 1:
+                return (get_x(self.x) + ZOOM * 2, get_y(self.y) + 20 * ZOOM)
+            elif index == 2:
+                return (get_x(self.x) + 18 * ZOOM, get_y(self.y) + 20 * ZOOM)
+        elif self.rotation == 3:
+            if index == 0:
+                return (get_x(self.x) + 20 * ZOOM, get_y(self.y) + 10 * ZOOM)
+            elif index == 1:
+                return (get_x(self.x), get_y(self.y) + ZOOM * 2)
+            elif index == 2:
+                return (get_x(self.x), get_y(self.y) + 18 * ZOOM)
+
     def draw(self):
         # check if switch is visible
         if not is_visible(self.x, self.y) and not is_visible(self.x + 20, self.y + 20):
@@ -81,6 +118,11 @@ class Switch:
             else:
                 pygame.draw.line(screen, SWITCH_COLOR_BAR, (get_x(self.x) + 20 * ZOOM, get_y(self.y) + 10 * ZOOM), (get_x(self.x), get_y(self.y) + ZOOM * 2), round(2 * ZOOM))
 
+        # draw io
+        for i in range(3):
+            if self.io[i] is not None:
+                pygame.draw.line(screen, SWITCH_COLOR_IO, self.get_io_pos(i), self.io[i].switch.get_io_pos(self.io[i].index), round(2 * ZOOM))
+
     def toggle(self):
         self.active = not self.active
 
@@ -89,7 +131,8 @@ class Switch:
 
 mouse_down = [-1, -1]
 
-s = [Switch(0, 0)]
+s = [Switch(0, 0, "init")]
+tmp_io = None
 
 while True:
     # handle events
@@ -113,17 +156,57 @@ while True:
         # MOUSE CLICK
         if event.type == pygame.MOUSEBUTTONDOWN and event.button in [1, 3]:
             # check if switch is clicked
-            for switch in s:
-                if get_x(switch.x) < pygame.mouse.get_pos()[0] < get_x(switch.x) + 20 * ZOOM and get_y(switch.y) < pygame.mouse.get_pos()[1] < get_y(switch.y) + 20 * ZOOM:
-                    if event.button == 3:
-                        switch.rotate()
-                    else:
-                        switch.toggle()
-                    break
-                    
+            found = False
+            for crsw in s:
+                # check if mouse is on IO
+                for i in range(3):
+                    io = crsw.get_io_pos(i)
+                    if io[0] - 5 * ZOOM < pygame.mouse.get_pos()[0] < io[0] + 5 * ZOOM and io[1] - 5 * ZOOM < pygame.mouse.get_pos()[1] < io[1] + 5 * ZOOM:
+                        found = True
+                        if event.button == 3: # delete io
+                            if crsw.io[i] is not None:
+                                crsw.io[i].switch.io[crsw.io[i].index] = None
+                                crsw.io[i] = None
+                        else:
+                            if tmp_io is None:
+                                tmp_io = IO(crsw, i)
+                            else:
+                                if tmp_io.switch is not crsw:
+                                    if tmp_io.switch.io[tmp_io.index] is not None:
+                                        print("delete old io")
+                                        tmp_io.switch.io[tmp_io.index].switch.io[tmp_io.switch.io[tmp_io.index].index] = None
+                                    if crsw.io[i] is not None:
+                                        print("delete new io")
+                                        crsw.io[i].switch.io[crsw.io[i].index] = None
+
+                                    tmp_io.switch.io[tmp_io.index] = IO(crsw, i)
+                                    crsw.io[i] = tmp_io
+                                    print(tmp_io.switch.io[tmp_io.index].switch.name)
+                                    print(crsw.io[i].switch.name)
+                                    tmp_io = None
+                                else:
+                                    print("same switch")
+                                    tmp_io.index = i
+                        break
+                else:
+                    if get_x(crsw.x) < pygame.mouse.get_pos()[0] < get_x(crsw.x) + 20 * ZOOM and get_y(crsw.y) < pygame.mouse.get_pos()[1] < get_y(crsw.y) + 20 * ZOOM:
+                        print(f"switch clicked {crsw.name}")
+                        found = True
+                        if event.button == 3:
+                            for i in range(3):
+                                if crsw.io[i] is not None:
+                                    crsw.io[i].switch.io[crsw.io[i].index] = None
+                            s.remove(crsw)
+                        else:
+                            crsw.toggle()
+                        break
+
+            if not found:
+                if event.button == 3:
+                    s.append(Switch(round((pygame.mouse.get_pos()[0]) / ZOOM + X_OFFSET, 1), round((pygame.mouse.get_pos()[1]) / ZOOM + Y_OFFSET, 1), str(len(s))))
+
             if event.button == 1:
                 mouse_down = pygame.mouse.get_pos()
-
 
         if event.type == pygame.MOUSEMOTION and mouse_down[0] != -1:
             # claculate offset
@@ -135,10 +218,25 @@ while True:
             mouse_down = [-1, -1]
 
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_r:
+            if event.key == pygame.K_x:
                 X_OFFSET = 0
                 Y_OFFSET = 0
                 ZOOM = 1
+            if event.key == pygame.K_l:
+                # list all switches and their io
+                print("switches:")
+                for crsw in s:
+                    print(crsw.name)
+                    for i in range(3):
+                        if crsw.io[i] is not None:
+                            print(f"  {i}: {crsw.io[i].switch.name}")
+                        else:
+                            print(f"  {i}: None")
+            if event.key == pygame.K_r:
+                for crsw in s:
+                    if get_x(crsw.x) < pygame.mouse.get_pos()[0] < get_x(crsw.x) + 20 * ZOOM and get_y(crsw.y) < pygame.mouse.get_pos()[1] < get_y(crsw.y) + 20 * ZOOM:
+                        crsw.rotate()
+                        break
 
     screen.fill((0, 0, 0))
     for switch in s:
