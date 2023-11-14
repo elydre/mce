@@ -18,7 +18,9 @@ MARBLE_SPEED = 5
 
 X_OFFSET = 0
 Y_OFFSET = 0
-ZOOM = 1
+ZOOM = 2
+
+current_switch_id = 0
 
 def is_visible(x, y):
     return (x - X_OFFSET) * ZOOM > 0 and (x - X_OFFSET) * ZOOM < WIDTH and (y - Y_OFFSET) * ZOOM > 0 and (y - Y_OFFSET) * ZOOM < HEIGHT
@@ -244,7 +246,7 @@ class Marble:
                 self.length = ((self.into.current_sw.get_io_pos_absolut(self.into.current_index)[0] - self.into.other_sw.get_io_pos_absolut(self.into.other_index)[0]) ** 2 + (self.into.current_sw.get_io_pos_absolut(self.into.current_index)[1] - self.into.other_sw.get_io_pos_absolut(self.into.other_index)[1]) ** 2) ** 0.5
             self.traveled = 0
 
-s = [Switch(0, 0, "init")]
+s = []
 m = Marble((255, 0, 0))
 
 def find_sw_from_name(name):
@@ -415,7 +417,8 @@ while True:
 
             if not found:
                 if event.button == 3:
-                    s.append(Switch(round((pygame.mouse.get_pos()[0]) / ZOOM + X_OFFSET, 1), round((pygame.mouse.get_pos()[1]) / ZOOM + Y_OFFSET, 1), str(len(s))))
+                    s.append(Switch(round((pygame.mouse.get_pos()[0]) / ZOOM + X_OFFSET, 1), round((pygame.mouse.get_pos()[1]) / ZOOM + Y_OFFSET, 1), str(current_switch_id)))
+                    current_switch_id += 1
 
             if event.button == 1:
                 mouse_down = pygame.mouse.get_pos()
@@ -467,9 +470,9 @@ while True:
                         m.traveled = 0
                         break
             elif event.key == pygame.K_s:
-                save_to_file("save.txt")
+                save_to_file("save.map")
             elif event.key == pygame.K_w:
-                load_from_file("save.txt")
+                load_from_file("save.map")
             elif event.key == pygame.K_h:
                 print("help:")
                 print("  x: reset zoom and offset")
