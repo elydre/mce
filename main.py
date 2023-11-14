@@ -278,7 +278,7 @@ while True:
                         if event.button == 3:
                             for i in range(3):
                                 if crsw.io[i] is not None:
-                                    crsw.io[i].ptd_sw.io[crsw.io[i].index] = None
+                                    crsw.io[i].other_sw.io[crsw.io[i].other_index] = None
                             s.remove(crsw)
                         else:
                             crsw.toggle()
