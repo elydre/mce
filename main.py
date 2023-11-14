@@ -243,10 +243,92 @@ class Marble:
                 self.length = ((self.into.current_sw.get_io_pos_absolut(self.into.current_index)[0] - self.into.other_sw.get_io_pos_absolut(self.into.other_index)[0]) ** 2 + (self.into.current_sw.get_io_pos_absolut(self.into.current_index)[1] - self.into.other_sw.get_io_pos_absolut(self.into.other_index)[1]) ** 2) ** 0.5
             self.traveled = 0
 
-mouse_down = [-1, -1]
-
 s = [Switch(0, 0, "init")]
 m = Marble((255, 0, 0))
+
+def find_sw_from_name(name):
+    for i in range(len(s)):
+        if s[i].name == name:
+            return i
+    print(f"switch \"{name}\" not found")
+    exit(1)
+
+def save_to_file(filename):
+    # for every switch, save its position, rotation and io
+    # for every marble, save its position and direction
+
+
+    with open(filename, "w") as f:
+        for crsw in s:
+            f.write(f"\"{crsw.name}\":{crsw.x},{crsw.y},{crsw.rotation}\n")
+            for i in range(5):
+                if crsw.io[i] is not None:
+                    f.write(f" {i}:\"{crsw.io[i].other_sw.name}\"[{crsw.io[i].other_index}]\n")
+        if m.into is not None:
+            f.write(f"marble: \"{m.into.current_sw.name}\":{m.into.current_index}\n")
+
+def load_from_file(filename):
+    # for every line, create a switch
+    # for every line, create a marble
+
+    global s, m
+    s = []
+    m = Marble((255, 0, 0))
+
+    with open(filename, "r") as f:
+
+        # switch
+        for line in f.readlines():
+            if line.startswith("\""):
+                line = line[1:].split(":")
+                name = line[0][:-1]
+                line = line[1].split(",")
+                x = float(line[0])
+                y = float(line[1])
+                rotation = int(line[2])
+                s.append(Switch(x, y, name))
+                s[-1].rotation = rotation
+                print(f"switch \"{name}\" at {x}, {y} with rotation {rotation}")
+            elif not (line.startswith(" ") or line.startswith("marble")):
+                print(f"unknown line: {line}")
+                exit(1)
+
+    # io
+    with open(filename, "r") as f:
+        crsw = None
+        for line in f.readlines():
+            if line.startswith("\""):
+                crsw = s[find_sw_from_name(line[1:line.index(":") - 1])]
+                print(f"switch {crsw.name}")
+            if line.startswith(" "):
+                line = line.strip()
+                line = line.split(":")
+                index = int(line[0])
+                line = line[1].split("\"")
+                name = line[1]
+                index2 = int(line[2][1:-1])
+                print(f"link {s[-1].name}[{index}] to {name}[{index2}]")
+                l = Link(crsw, index, s[find_sw_from_name(name)], index2)
+                crsw.io[index] = l.set_current(crsw, index)
+                s[find_sw_from_name(name)].io[index2] = l.set_current(s[find_sw_from_name(name)], index2)
+
+    # marble
+    with open(filename, "r") as f:
+        for line in f.readlines():
+            if line.startswith("marble"):
+                line = line[7:].strip()
+                line = line.split(":")
+                name = line[0][1:-1]
+                index = int(line[1])
+
+                print(f"set marble to {name}[{index}]")
+                m.into = s[find_sw_from_name(name)].io[index]
+                
+                m.length = ((m.into.current_sw.get_io_pos_absolut(m.into.current_index)[0] - m.into.other_sw.get_io_pos_absolut(m.into.other_index)[0]) ** 2 + (m.into.current_sw.get_io_pos_absolut(m.into.current_index)[1] - m.into.other_sw.get_io_pos_absolut(m.into.other_index)[1]) ** 2) ** 0.5
+                m.traveled = 0
+                break
+
+mouse_down = [-1, -1]
 
 tmp_io = None
 
@@ -377,6 +459,19 @@ while True:
                             m.length = ((m.into.current_sw.get_io_pos_absolut(m.into.current_index)[0] - m.into.other_sw.get_io_pos_absolut(m.into.other_index)[0]) ** 2 + (m.into.current_sw.get_io_pos_absolut(m.into.current_index)[1] - m.into.other_sw.get_io_pos_absolut(m.into.other_index)[1]) ** 2) ** 0.5
                         m.traveled = 0
                         break
+            elif event.key == pygame.K_s:
+                save_to_file("save.txt")
+            elif event.key == pygame.K_w:
+                load_from_file("save.txt")
+            elif event.key == pygame.K_h:
+                print("help:")
+                print("  x: reset zoom and offset")
+                print("  l: list all switches and marbles")
+                print("  r: rotate switch")
+                print("  m: set marble")
+                print("  s: save")
+                print("  w: load")
+                print("  h: help")
 
     screen.fill((0, 0, 0))
     for switch in s:
