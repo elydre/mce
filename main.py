@@ -10,6 +10,7 @@ clock = pygame.time.Clock()
 SWITCH_COLOR_ON = (169, 73, 82)
 SWITCH_COLOR_OFF = (99, 129, 135)
 SWITCH_COLOR_IO = (230, 235, 237)
+SWITCH_COLOR_GATE = (229, 185, 205)
 SWITCH_COLOR_BAR = (0, 0, 0)
 
 MARBLE_SPEED = 5
@@ -66,7 +67,7 @@ class Switch:
         self.y = y
         self.active = False
         self.rotation = 1 # 0 = up, 1 = right, 2 = down, 3 = left
-        self.io = [None, None, None]
+        self.io = [None, None, None, None, None] # in, out1, out2, gate_in, gate_out
         self.name = name
 
     def get_io_pos(self, index):
@@ -114,6 +115,8 @@ class Switch:
         # one input under the switch (use rotation)
         # tow outputs on the top corners (use rotation)
         # active bar from bottom to left corner if not active else from top to right corner
+        # gate io on the left and right side (use rotation)
+
         if self.rotation == 0:
             pygame.draw.rect(screen, SWITCH_COLOR_IO, (get_x(self.x) + 5 * ZOOM, get_y(self.y) + 20 * ZOOM, 10 * ZOOM, 5 * ZOOM))
             pygame.draw.rect(screen, SWITCH_COLOR_IO, (get_x(self.x), get_y(self.y) - 5 * ZOOM, 5 * ZOOM, 5 * ZOOM))
@@ -122,6 +125,8 @@ class Switch:
                 pygame.draw.line(screen, SWITCH_COLOR_BAR, (get_x(self.x) + 10 * ZOOM, get_y(self.y) + 20 * ZOOM), (get_x(self.x) + 18 * ZOOM, get_y(self.y)), round(2 * ZOOM))
             else:
                 pygame.draw.line(screen, SWITCH_COLOR_BAR, (get_x(self.x) + 10 * ZOOM, get_y(self.y) + 20 * ZOOM), (get_x(self.x) + ZOOM * 2, get_y(self.y)), round(2 * ZOOM))
+            pygame.draw.rect(screen, SWITCH_COLOR_GATE, (get_x(self.x) + 20 * ZOOM, get_y(self.y) + 5 * ZOOM, 3 * ZOOM, 10 * ZOOM))
+            pygame.draw.rect(screen, SWITCH_COLOR_GATE, (get_x(self.x) - 3 * ZOOM, get_y(self.y) + 5 * ZOOM, 3 * ZOOM, 10 * ZOOM))
 
         elif self.rotation == 1:
             pygame.draw.rect(screen, SWITCH_COLOR_IO, (get_x(self.x) - 5 * ZOOM, get_y(self.y) + 5 * ZOOM, 5 * ZOOM, 10 * ZOOM))
@@ -131,6 +136,9 @@ class Switch:
                 pygame.draw.line(screen, SWITCH_COLOR_BAR, (get_x(self.x), get_y(self.y) + 10 * ZOOM), (get_x(self.x) + 20 * ZOOM, get_y(self.y) + 18 * ZOOM), round(2 * ZOOM))
             else:
                 pygame.draw.line(screen, SWITCH_COLOR_BAR, (get_x(self.x), get_y(self.y) + 10 * ZOOM), (get_x(self.x) + 20 * ZOOM, get_y(self.y) + ZOOM * 2), round(2 * ZOOM))
+            pygame.draw.rect(screen, SWITCH_COLOR_GATE, (get_x(self.x) + 5 * ZOOM, get_y(self.y) - 3 * ZOOM, 10 * ZOOM, 3 * ZOOM))
+            pygame.draw.rect(screen, SWITCH_COLOR_GATE, (get_x(self.x) + 5 * ZOOM, get_y(self.y) + 20 * ZOOM, 10 * ZOOM, 3 * ZOOM))
+
         elif self.rotation == 2:
             pygame.draw.rect(screen, SWITCH_COLOR_IO, (get_x(self.x) + 5 * ZOOM, get_y(self.y) - 5 * ZOOM, 10 * ZOOM, 5 * ZOOM))
             pygame.draw.rect(screen, SWITCH_COLOR_IO, (get_x(self.x), get_y(self.y) + 20 * ZOOM, 5 * ZOOM, 5 * ZOOM))
@@ -139,6 +147,9 @@ class Switch:
                 pygame.draw.line(screen, SWITCH_COLOR_BAR, (get_x(self.x) + 10 * ZOOM, get_y(self.y)), (get_x(self.x) + 18 * ZOOM, get_y(self.y) + 20 * ZOOM), round(2 * ZOOM))
             else:
                 pygame.draw.line(screen, SWITCH_COLOR_BAR, (get_x(self.x) + 10 * ZOOM, get_y(self.y)), (get_x(self.x) + ZOOM * 2, get_y(self.y) + 20 * ZOOM), round(2 * ZOOM))
+            pygame.draw.rect(screen, SWITCH_COLOR_GATE, (get_x(self.x) + 20 * ZOOM, get_y(self.y) + 5 * ZOOM, 3 * ZOOM, 10 * ZOOM))
+            pygame.draw.rect(screen, SWITCH_COLOR_GATE, (get_x(self.x) - 3 * ZOOM, get_y(self.y) + 5 * ZOOM, 3 * ZOOM, 10 * ZOOM))
+
         elif self.rotation == 3:
             pygame.draw.rect(screen, SWITCH_COLOR_IO, (get_x(self.x) + 20 * ZOOM, get_y(self.y) + 5 * ZOOM, 5 * ZOOM, 10 * ZOOM))
             pygame.draw.rect(screen, SWITCH_COLOR_IO, (get_x(self.x) - 5 * ZOOM, get_y(self.y), 5 * ZOOM, 5 * ZOOM))
@@ -147,6 +158,8 @@ class Switch:
                 pygame.draw.line(screen, SWITCH_COLOR_BAR, (get_x(self.x) + 20 * ZOOM, get_y(self.y) + 10 * ZOOM), (get_x(self.x), get_y(self.y) + 18 * ZOOM), round(2 * ZOOM))
             else:
                 pygame.draw.line(screen, SWITCH_COLOR_BAR, (get_x(self.x) + 20 * ZOOM, get_y(self.y) + 10 * ZOOM), (get_x(self.x), get_y(self.y) + ZOOM * 2), round(2 * ZOOM))
+            pygame.draw.rect(screen, SWITCH_COLOR_GATE, (get_x(self.x) + 5 * ZOOM, get_y(self.y) + 20 * ZOOM, 10 * ZOOM, 3 * ZOOM))
+            pygame.draw.rect(screen, SWITCH_COLOR_GATE, (get_x(self.x) + 5 * ZOOM, get_y(self.y) - 3 * ZOOM, 10 * ZOOM, 3 * ZOOM))
 
         # draw io
         for i in range(3):
