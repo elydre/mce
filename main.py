@@ -44,12 +44,12 @@ class Link:
         self.other_sw = None
         self.other_index = None
     
-    def set_current(self, sw):
+    def set_current(self, sw, index):
         self.current_sw = sw
-        self.other_sw = self.out_sw if self.current_sw is self.in_sw else self.in_sw
+        self.other_sw = self.in_sw if self.current_sw is self.out_sw else self.out_sw
 
-        self.current_index = self.out_index if self.current_sw is self.out_sw else self.in_index
-        self.other_index = self.in_index if self.current_sw is self.out_sw else self.out_index
+        self.current_index = index
+        self.other_index = self.in_index if self.current_index is self.out_index else self.out_index
 
         return self.copy()
     
@@ -70,35 +70,55 @@ class Switch:
         self.io = [None, None, None, None, None] # in, out1, out2, gate_in, gate_out
         self.name = name
 
-    def get_io_pos(self, index):
+    def get_io_pos_absolut(self, index):
         if self.rotation == 0:
             if index == 0:
-                return (get_x(self.x) + 10 * ZOOM, get_y(self.y) + 20 * ZOOM)
+                return (self.x + 10, self.y + 20)
             elif index == 1:
-                return (get_x(self.x) + ZOOM * 2, get_y(self.y))
+                return (self.x + 2, self.y)
             elif index == 2:
-                return (get_x(self.x) + 18 * ZOOM, get_y(self.y))
+                return (self.x + 18, self.y)
+            elif index == 3:
+                return (self.x + 20, self.y + 10)
+            elif index == 4:
+                return (self.x, self.y + 10)
         elif self.rotation == 1:
             if index == 0:
-                return (get_x(self.x), get_y(self.y) + 10 * ZOOM)
+                return (self.x, self.y + 10)
             elif index == 1:
-                return (get_x(self.x) + 20 * ZOOM, get_y(self.y) + ZOOM * 2)
+                return (self.x + 20, self.y + 2)
             elif index == 2:
-                return (get_x(self.x) + 20 * ZOOM, get_y(self.y) + 18 * ZOOM)
+                return (self.x + 20, self.y + 18)
+            elif index == 3:
+                return (self.x + 10, self.y + 20)
+            elif index == 4:
+                return (self.x + 10, self.y)
         elif self.rotation == 2:
             if index == 0:
-                return (get_x(self.x) + 10 * ZOOM, get_y(self.y))
+                return (self.x + 10, self.y)
             elif index == 1:
-                return (get_x(self.x) + ZOOM * 2, get_y(self.y) + 20 * ZOOM)
+                return (self.x + 2, self.y + 20)
             elif index == 2:
-                return (get_x(self.x) + 18 * ZOOM, get_y(self.y) + 20 * ZOOM)
+                return (self.x + 18, self.y + 20)
+            elif index == 3:
+                return (self.x + 20, self.y + 10)
+            elif index == 4:
+                return (self.x, self.y + 10)
         elif self.rotation == 3:
             if index == 0:
-                return (get_x(self.x) + 20 * ZOOM, get_y(self.y) + 10 * ZOOM)
+                return (self.x + 20, self.y + 10)
             elif index == 1:
-                return (get_x(self.x), get_y(self.y) + ZOOM * 2)
+                return (self.x, self.y + 2)
             elif index == 2:
-                return (get_x(self.x), get_y(self.y) + 18 * ZOOM)
+                return (self.x, self.y + 18)
+            elif index == 3:
+                return (self.x + 10, self.y)
+            elif index == 4:
+                return (self.x + 10, self.y + 20)
+    
+    def get_io_pos(self, index):
+        val = self.get_io_pos_absolut(index)
+        return (get_x(val[0]), get_y(val[1]))
 
     def draw(self):
         # check if switch is visible
@@ -162,12 +182,12 @@ class Switch:
             pygame.draw.rect(screen, SWITCH_COLOR_GATE, (get_x(self.x) + 5 * ZOOM, get_y(self.y) - 3 * ZOOM, 10 * ZOOM, 3 * ZOOM))
 
         # draw io
-        for i in range(3):
+        for i in range(5):
             if self.io[i] is not None:
                 x = self.get_io_pos(i)
                 y = x[1]
                 x = x[0]
-                
+
                 val = self.io[i].other_sw.get_io_pos(self.io[i].other_index)
                 pygame.draw.line(screen, gen_color(x, y), self.get_io_pos(i), val, round(2 * ZOOM))
 
@@ -177,8 +197,12 @@ class Switch:
     def rotate(self):
         self.rotation = (self.rotation + 1) % 4
     
-    def get_directed_out(self):
-        if self.active:
+    def get_directed_out(self, index):
+        if index == 3:
+            return self.io[4]
+        elif index == 4:
+            return self.io[3]
+        elif self.active:
             return self.io[2]
         else:
             return self.io[1]
@@ -207,16 +231,16 @@ class Marble:
     def move(self):
         if self.into is None:
             return
-        if self.traveled == 0:
-            self.length = ((self.into.current_sw.x - self.into.other_sw.x) ** 2 + (self.into.current_sw.y - self.into.other_sw.y) ** 2) ** 0.5
         self.traveled += MARBLE_SPEED
         if self.traveled > self.length:
-            self.into = self.into.other_sw.get_directed_out()
+            if self.into.other_index in [3, 4]:
+                self.into.other_sw.toggle()
+            self.into = self.into.other_sw.get_directed_out(self.into.other_index)
             if self.into is None:
                 print("MARBLE BAD SWITCH")
                 self.length = 0
             else:
-                self.length = ((self.into.current_sw.x - self.into.other_sw.x) ** 2 + (self.into.current_sw.y - self.into.other_sw.y) ** 2) ** 0.5
+                self.length = ((self.into.current_sw.get_io_pos_absolut(self.into.current_index)[0] - self.into.other_sw.get_io_pos_absolut(self.into.other_index)[0]) ** 2 + (self.into.current_sw.get_io_pos_absolut(self.into.current_index)[1] - self.into.other_sw.get_io_pos_absolut(self.into.other_index)[1]) ** 2) ** 0.5
             self.traveled = 0
 
 mouse_down = [-1, -1]
@@ -251,19 +275,20 @@ while True:
             found = False
             for crsw in s:
                 # check if mouse is on IO
-                for i in range(3):
+                for i in range(5):
                     io = crsw.get_io_pos(i)
                     if io[0] - 5 * ZOOM < pygame.mouse.get_pos()[0] < io[0] + 5 * ZOOM and io[1] - 5 * ZOOM < pygame.mouse.get_pos()[1] < io[1] + 5 * ZOOM:
                         found = True
                         if event.button == 3: # delete io
                             if crsw.io[i] is not None:
+                                print("delete io")
                                 crsw.io[i].other_sw.io[crsw.io[i].other_index] = None
                                 crsw.io[i] = None
                         else:
                             if tmp_io is None:
                                 tmp_io = Link(crsw, i, None, None)
                             else:
-                                if tmp_io.out_sw is not crsw:
+                                if not (tmp_io.out_sw is crsw and tmp_io.out_index == i):
                                     tmp_io.in_sw = crsw
                                     tmp_io.in_index = i
 
@@ -275,21 +300,23 @@ while True:
                                         print("delete old io")
                                         tmp_io.in_sw.io[tmp_io.in_index].other_sw.io[tmp_io.in_sw.io[tmp_io.in_index].other_index] = None
 
-                                    tmp_io.out_sw.io[tmp_io.out_index] = tmp_io.set_current(tmp_io.out_sw)
-                                    tmp_io.in_sw.io[tmp_io.in_index] = tmp_io.set_current(tmp_io.in_sw)
+                                    tmp_io.out_sw.io[tmp_io.out_index] = tmp_io.set_current(tmp_io.out_sw, tmp_io.out_index)
+                                    tmp_io.in_sw.io[tmp_io.in_index] = tmp_io.set_current(tmp_io.in_sw, tmp_io.in_index)
 
                                     print(f"link {tmp_io.out_sw.name}[{tmp_io.out_index}] to {tmp_io.in_sw.name}[{tmp_io.in_index}]")
                                     tmp_io = None
                                 else:
-                                    print("same switch")
-                                    tmp_io.index = i
+                                    print("same port")
+
                         break
                 else:
                     if get_x(crsw.x) < pygame.mouse.get_pos()[0] < get_x(crsw.x) + 20 * ZOOM and get_y(crsw.y) < pygame.mouse.get_pos()[1] < get_y(crsw.y) + 20 * ZOOM:
                         print(f"switch clicked {crsw.name}")
                         found = True
                         if event.button == 3:
-                            for i in range(3):
+                            if tmp_io is not None and tmp_io.out_sw is crsw:
+                                tmp_io = None
+                            for i in range(5):
                                 if crsw.io[i] is not None:
                                     crsw.io[i].other_sw.io[crsw.io[i].other_index] = None
                             s.remove(crsw)
@@ -323,7 +350,7 @@ while True:
                 print("switches:")
                 for crsw in s:
                     print(crsw.name)
-                    for i in range(3):
+                    for i in range(5):
                         if crsw.io[i] is not None:
                             print(f"  {i}: {crsw.io[i].other_sw.name}[{crsw.io[i].other_index}]")
                         else:
@@ -343,11 +370,11 @@ while True:
                 for crsw in s:
                     if get_x(crsw.x) < pygame.mouse.get_pos()[0] < get_x(crsw.x) + 20 * ZOOM and get_y(crsw.y) < pygame.mouse.get_pos()[1] < get_y(crsw.y) + 20 * ZOOM:
                         print(f"set marble to {crsw.name}")
-                        m.into = crsw.get_directed_out()
+                        m.into = crsw.get_directed_out(0)
                         if m.into is None:
                             m.length = 0
                         else:
-                            m.length = ((m.into.current_sw.x - m.into.other_sw.x) ** 2 + (m.into.current_sw.y - m.into.other_sw.y) ** 2) ** 0.5
+                            m.length = ((m.into.current_sw.get_io_pos_absolut(m.into.current_index)[0] - m.into.other_sw.get_io_pos_absolut(m.into.other_index)[0]) ** 2 + (m.into.current_sw.get_io_pos_absolut(m.into.current_index)[1] - m.into.other_sw.get_io_pos_absolut(m.into.other_index)[1]) ** 2) ** 0.5
                         m.traveled = 0
                         break
 
