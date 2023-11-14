@@ -30,11 +30,35 @@ def get_y(y):
 def gen_color(x, y):
     return (x * 50 % 180, y * 50 % 180, (x + y) * 50 % 180)
 
-class IO:
-    def __init__(self, ptd_sw, index, current = None):
-        self.ptd_sw = ptd_sw
-        self.current_sw = current
-        self.index = index
+class Link:
+    def __init__(self, out_sw, out_index, in_sw, in_index):
+        self.out_sw = out_sw
+        self.out_index = out_index
+        self.in_sw = in_sw
+        self.in_index = in_index
+
+        self.current_sw = None
+        self.current_index = None
+
+        self.other_sw = None
+        self.other_index = None
+    
+    def set_current(self, sw):
+        self.current_sw = sw
+        self.other_sw = self.out_sw if self.current_sw is self.in_sw else self.in_sw
+
+        self.current_index = self.out_index if self.current_sw is self.out_sw else self.in_index
+        self.other_index = self.in_index if self.current_sw is self.out_sw else self.out_index
+
+        return self.copy()
+    
+    def copy(self):
+        new_io = Link(self.out_sw, self.out_index, self.in_sw, self.in_index)
+        new_io.current_sw = self.current_sw
+        new_io.other_sw = self.other_sw
+        new_io.current_index = self.current_index
+        new_io.other_index = self.other_index
+        return new_io
 
 class Switch:
     def __init__(self, x, y, name = ""):
@@ -130,7 +154,9 @@ class Switch:
                 x = self.get_io_pos(i)
                 y = x[1]
                 x = x[0]
-                pygame.draw.line(screen, gen_color(x, y), self.get_io_pos(i), self.io[i].ptd_sw.get_io_pos(self.io[i].index), round(2 * ZOOM))
+                
+                val = self.io[i].other_sw.get_io_pos(self.io[i].other_index)
+                pygame.draw.line(screen, gen_color(x, y), self.get_io_pos(i), val, round(2 * ZOOM))
 
     def toggle(self):
         self.active = not self.active
@@ -147,40 +173,38 @@ class Switch:
 class Marble:
     def __init__(self, color):
         self.color = color
-        self.into = [None, None]
+        self.into = None
         self.traveled = 0
         self.length = 0
         self.name = "THE MARBLE"
 
     def draw(self):
-        if self.into[0] is None:
+        if self.into is None:
             return
-        x1 = self.into[0].ptd_sw.get_io_pos(self.into[0].index)[0]
-        y1 = self.into[0].ptd_sw.get_io_pos(self.into[0].index)[1]
-        if self.into[1] is None:
-            pygame.draw.circle(screen, self.color, (x1, y1), round(5 * ZOOM))
-            return
-        x2 = self.into[1].ptd_sw.get_io_pos(self.into[1].index)[0]
-        y2 = self.into[1].ptd_sw.get_io_pos(self.into[1].index)[1]
+        x1 = self.into.current_sw.get_io_pos(self.into.current_index)[0]
+        y1 = self.into.current_sw.get_io_pos(self.into.current_index)[1]
+
+        x2 = self.into.other_sw.get_io_pos(self.into.other_index)[0]
+        y2 = self.into.other_sw.get_io_pos(self.into.other_index)[1]
+
         x = x1 + (x2 - x1) * self.traveled / self.length
         y = y1 + (y2 - y1) * self.traveled / self.length
         pygame.draw.circle(screen, self.color, (x, y), round(5 * ZOOM))
 
     def move(self):
-        if self.into[0] is None or self.into[1] is None:
+        if self.into is None:
             return
         if self.traveled == 0:
-            self.length = ((get_x(self.into[0].ptd_sw.get_io_pos(self.into[0].index)[0]) - get_x(self.into[1].ptd_sw.get_io_pos(self.into[1].index)[0])) ** 2 + (get_y(self.into[0].ptd_sw.get_io_pos(self.into[0].index)[1]) - get_y(self.into[1].ptd_sw.get_io_pos(self.into[1].index)[1])) ** 2) ** 0.5
+            self.length = ((self.into.current_sw.x - self.into.other_sw.x) ** 2 + (self.into.current_sw.y - self.into.other_sw.y) ** 2) ** 0.5
         self.traveled += MARBLE_SPEED
         if self.traveled > self.length:
-            self.into[0] = self.into[1].ptd_sw.io[2 if self.into[1].ptd_sw.active else 1]
-            self.into[1] = self.into[0].ptd_sw.io[self.into[0].index]
-            (self.into[0], self.into[1]) = (self.into[1], self.into[0])
-            if self.into[1] is None:
+            self.into = self.into.other_sw.get_directed_out()
+            if self.into is None:
                 print("MARBLE BAD SWITCH")
-            print("MARBLE SWITCH")
+                self.length = 0
+            else:
+                self.length = ((self.into.current_sw.x - self.into.other_sw.x) ** 2 + (self.into.current_sw.y - self.into.other_sw.y) ** 2) ** 0.5
             self.traveled = 0
-            self.length = ((m.into[1].ptd_sw.x - m.into[0].ptd_sw.x) ** 2 + (m.into[1].ptd_sw.y - m.into[0].ptd_sw.y) ** 2) ** 0.5
 
 mouse_down = [-1, -1]
 
@@ -220,24 +244,28 @@ while True:
                         found = True
                         if event.button == 3: # delete io
                             if crsw.io[i] is not None:
-                                crsw.io[i].ptd_sw.io[crsw.io[i].index] = None
+                                crsw.io[i].other_sw.io[crsw.io[i].other_index] = None
                                 crsw.io[i] = None
                         else:
                             if tmp_io is None:
-                                tmp_io = IO(crsw, i)
+                                tmp_io = Link(crsw, i, None, None)
                             else:
-                                if tmp_io.ptd_sw is not crsw:
-                                    if tmp_io.ptd_sw.io[tmp_io.index] is not None:
-                                        print("delete old io")
-                                        tmp_io.ptd_sw.io[tmp_io.index].ptd_sw.io[tmp_io.ptd_sw.io[tmp_io.index].index] = None
-                                    if crsw.io[i] is not None:
-                                        print("delete new io")
-                                        crsw.io[i].ptd_sw.io[crsw.io[i].index] = None
+                                if tmp_io.out_sw is not crsw:
+                                    tmp_io.in_sw = crsw
+                                    tmp_io.in_index = i
 
-                                    tmp_io.ptd_sw.io[tmp_io.index] = IO(crsw, i)
-                                    crsw.io[i] = tmp_io
-                                    print(tmp_io.ptd_sw.io[tmp_io.index].ptd_sw.name)
-                                    print(crsw.io[i].ptd_sw.name)
+                                    if tmp_io.out_sw.io[tmp_io.out_index] is not None:
+                                        print("delete old io")
+                                        tmp_io.out_sw.io[tmp_io.out_index].other_sw.io[tmp_io.out_sw.io[tmp_io.out_index].other_index] = None
+
+                                    if tmp_io.in_sw.io[tmp_io.in_index] is not None:
+                                        print("delete old io")
+                                        tmp_io.in_sw.io[tmp_io.in_index].other_sw.io[tmp_io.in_sw.io[tmp_io.in_index].other_index] = None
+
+                                    tmp_io.out_sw.io[tmp_io.out_index] = tmp_io.set_current(tmp_io.out_sw)
+                                    tmp_io.in_sw.io[tmp_io.in_index] = tmp_io.set_current(tmp_io.in_sw)
+
+                                    print(f"link {tmp_io.out_sw.name}[{tmp_io.out_index}] to {tmp_io.in_sw.name}[{tmp_io.in_index}]")
                                     tmp_io = None
                                 else:
                                     print("same switch")
@@ -284,16 +312,14 @@ while True:
                     print(crsw.name)
                     for i in range(3):
                         if crsw.io[i] is not None:
-                            print(f"  {i}: {crsw.io[i].ptd_sw.name}")
+                            print(f"  {i}: {crsw.io[i].other_sw.name}[{crsw.io[i].other_index}]")
                         else:
                             print(f"  {i}: None")
                 # list all marbles
                 print("marble:")
-                print(f"  into[0]: {m.into[0].ptd_sw.name if m.into[0] is not None else None}")
-                print(f"  into[1]: {m.into[1].ptd_sw.name if m.into[1] is not None else None}")
+                print(f"  into: {m.into.current_sw.name}[{m.into.current_index}] -> {m.into.other_sw.name}[{m.into.other_index}]" if m.into is not None else "  into: None")
                 print(f"  traveled: {m.traveled}")
                 print(f"  length: {m.length}")
-
 
             elif event.key == pygame.K_r:
                 for crsw in s:
@@ -304,13 +330,11 @@ while True:
                 for crsw in s:
                     if get_x(crsw.x) < pygame.mouse.get_pos()[0] < get_x(crsw.x) + 20 * ZOOM and get_y(crsw.y) < pygame.mouse.get_pos()[1] < get_y(crsw.y) + 20 * ZOOM:
                         print(f"set marble to {crsw.name}")
-                        m.into[1] = crsw.get_directed_out()
-                        if m.into[1] is not None:
-                            m.into[0] = m.into[1].ptd_sw.io[m.into[1].index]
-                            m.length = ((m.into[1].ptd_sw.x - m.into[0].ptd_sw.x) ** 2 + (m.into[1].ptd_sw.y - m.into[0].ptd_sw.y) ** 2) ** 0.5
-                        else:
-                            m.into[0] = None
+                        m.into = crsw.get_directed_out()
+                        if m.into is None:
                             m.length = 0
+                        else:
+                            m.length = ((m.into.current_sw.x - m.into.other_sw.x) ** 2 + (m.into.current_sw.y - m.into.other_sw.y) ** 2) ** 0.5
                         m.traveled = 0
                         break
 
