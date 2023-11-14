@@ -3,7 +3,7 @@ import pygame
 pygame.init()
 WIDTH = 800
 HEIGHT = 600
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
+screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 pygame.display.set_caption("MCE")
 clock = pygame.time.Clock()
 
@@ -12,6 +12,7 @@ SWITCH_COLOR_OFF = (99, 129, 135)
 SWITCH_COLOR_IO = (230, 235, 237)
 SWITCH_COLOR_GATE = (229, 185, 205)
 SWITCH_COLOR_BAR = (0, 0, 0)
+BACKGROUND_COLOR = (29, 33, 38)
 
 MARBLE_SPEED = 5
 
@@ -338,6 +339,12 @@ while True:
         if event.type == pygame.QUIT:
             pygame.quit()
             quit()
+        
+        # screen size
+        if event.type == pygame.VIDEORESIZE:
+            WIDTH = event.w
+            HEIGHT = event.h
+            screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 
         # ZOOM IN/OUT
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 4:
@@ -472,8 +479,9 @@ while True:
                 print("  s: save")
                 print("  w: load")
                 print("  h: help")
+    
 
-    screen.fill((0, 0, 0))
+    screen.fill(BACKGROUND_COLOR)
     for switch in s:
         switch.draw()
     
